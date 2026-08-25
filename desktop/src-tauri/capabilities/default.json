@@ -2,6 +2,6 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default capability for the Quintodrome desktop window",
-  "windows": ["main"],
-  "permissions": ["core:default", "core:event:default"]
+  "windows": ["main", "content"],
+  "permissions": ["core:default", "core:event:default", "shell:allow-open"]
 }
