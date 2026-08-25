@@ -107,6 +107,11 @@ fn read_clipboard(app: tauri::AppHandle) -> Result<String, String> {
     app.clipboard().read_text().map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn write_clipboard(app: tauri::AppHandle, text: String) -> Result<(), String> {
+    app.clipboard().write_text(text).map_err(|e| e.to_string())
+}
+
 /// Enables two-finger swipe-to-navigate (back/forward) in the content webview.
 #[cfg(target_os = "macos")]
 fn enable_swipe_navigation(app: &tauri::AppHandle) {
@@ -186,7 +191,14 @@ pub fn run() {
         // all), so Cmd+X/C/V/A/Z work in the webview's text fields.
         .menu(|handle| tauri::menu::Menu::default(handle))
         .manage(ServerState::default())
-        .invoke_handler(tauri::generate_handler![back, forward, reload, navigate, read_clipboard])
+        .invoke_handler(tauri::generate_handler![
+            back,
+            forward,
+            reload,
+            navigate,
+            read_clipboard,
+            write_clipboard
+        ])
         .setup(|app| {
             let handle = app.handle().clone();
 

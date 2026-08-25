@@ -2,6 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default capability for the Quintodrome desktop window",
-  "windows": ["main", "content"],
-  "permissions": ["core:default", "core:event:default", "shell:allow-open"]
+  "windows": ["main"],
+  "permissions": ["core:default", "core:event:default", "shell:allow-open"],
+  "remote": {
+    "urls": ["http://127.0.0.1:4533", "http://localhost:4533"]
+  }
 }
