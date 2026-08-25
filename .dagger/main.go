@@ -42,7 +42,10 @@ func (m *Quintodrome) LintGo(ctx context.Context, src *dagger.Directory) error {
 	_, err := goContainer().
 		WithDirectory("/repo", src).
 		WithWorkdir("/repo").
-		WithExec([]string{"sh", "-c", "curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin"}).
+		// Fetch the release tarball directly instead of the install script,
+		// whose hardcoded SHA256 for v2.12.0 doesn't match the re-uploaded
+		// release tarball.
+		WithExec([]string{"sh", "-c", "curl -sSfL https://github.com/golangci/golangci-lint/releases/download/v2.12.0/golangci-lint-2.12.0-linux-amd64.tar.gz | tar -xz --strip-components=1 -C /usr/local/bin"}).
 		WithExec([]string{"golangci-lint", "run", "--timeout", "2m"}).
 		Sync(ctx)
 	return err
