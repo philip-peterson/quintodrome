@@ -105,6 +105,7 @@ Environment variables override the defaults:
 | `QUINTODROME_HOST`          | `127.0.0.1`              | Address the webview connects to |
 | `QUINTODROME_PORT`          | `4533`                   | Port for the Navidrome server   |
 | `QUINTODROME_MUSIC_FOLDER`  | OS music dir (e.g. `~/Music`) | Where your music lives      |
+| `QUINTODROME_PUBLIC_URL`    | `http://quintodrome`     | Friendly origin shown in the address bar |
 
 The data folder (DB, cache) is always the OS app-data directory
 (e.g. `~/Library/Application Support/com.quintodrome.desktop` on macOS).

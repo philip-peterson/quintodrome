@@ -7,6 +7,38 @@ use tauri::{
 };
 
 const TOOLBAR_HEIGHT: f64 = 60.0;
+const DEFAULT_PUBLIC_URL: &str = "http://quintodrome";
+
+/// Maps the internal Navidrome origin (e.g. `http://127.0.0.1:4533`) to a
+/// friendlier, user-facing origin shown in the address bar.
+#[derive(Clone)]
+struct UrlMask {
+    real: String,
+    public: String,
+}
+
+impl UrlMask {
+    fn new(host: &str, port: u16) -> Self {
+        let real = format!("http://{host}:{port}");
+        let public = std::env::var("QUINTODROME_PUBLIC_URL")
+            .unwrap_or_else(|_| DEFAULT_PUBLIC_URL.to_string());
+        Self { real, public }
+    }
+
+    /// `http://127.0.0.1:4533/...` -> `http://quintodrome/...`
+    fn mask(&self, url: &str) -> String {
+        url.strip_prefix(&self.real)
+            .map(|rest| format!("{}{}", self.public, rest))
+            .unwrap_or_else(|| url.to_string())
+    }
+
+    /// `http://quintodrome/...` -> `http://127.0.0.1:4533/...`
+    fn unmask(&self, url: &str) -> String {
+        url.strip_prefix(&self.public)
+            .map(|rest| format!("{}{}", self.real, rest))
+            .unwrap_or_else(|| url.to_string())
+    }
+}
 
 #[tauri::command]
 fn back(app: tauri::AppHandle) {
@@ -31,6 +63,7 @@ fn reload(app: tauri::AppHandle) {
 
 #[tauri::command]
 fn navigate(app: tauri::AppHandle, url: String) {
+    let url = app.state::<UrlMask>().unmask(&url);
     if let Some(content) = app.get_webview("content") {
         if let Ok(url) = Url::parse(&url) {
             let _ = content.navigate(url);
@@ -91,18 +124,22 @@ pub fn run() {
                 .and_then(|p| p.parse::<u16>().ok())
                 .unwrap_or(server::DEFAULT_PORT);
 
-            let navidrome = Navidrome::new(host, port);
+            let navidrome = Navidrome::new(host.clone(), port);
             let navidrome_url = navidrome.url.clone();
+
+            let mask = UrlMask::new(&host, port);
+            app.manage(mask.clone());
 
             // The primary webview ("main") is the toolbar; the Navidrome content
             // lives in a child webview below it.
             let content = WebviewBuilder::new("content", WebviewUrl::App("index.html".into()))
                 .on_navigation({
                     let handle = handle.clone();
+                    let mask = mask.clone();
                     move |url| {
                         if url.scheme() == "http" || url.scheme() == "https" {
                             if let Some(toolbar) = handle.get_webview("main") {
-                                let _ = toolbar.emit("url-changed", url.to_string());
+                                let _ = toolbar.emit("url-changed", mask.mask(&url.to_string()));
                             }
                         }
                         true
@@ -129,7 +166,7 @@ pub fn run() {
             enable_swipe_navigation(app.handle());
 
             if let Some(toolbar) = app.get_webview("main") {
-                let _ = toolbar.emit("url-changed", &navidrome_url);
+                let _ = toolbar.emit("url-changed", mask.mask(&navidrome_url));
             }
 
             // Detect/start Navidrome off the main thread, then load it.
