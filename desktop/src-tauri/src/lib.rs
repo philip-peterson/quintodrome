@@ -5,7 +5,6 @@ use tauri::{
     Emitter, LogicalPosition, LogicalSize, Manager, RunEvent, Url, WebviewBuilder, WebviewUrl,
     WindowEvent,
 };
-use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
 
 const TOOLBAR_HEIGHT: f64 = 60.0;
@@ -69,16 +68,6 @@ fn navigate(app: tauri::AppHandle, url: String) {
             let _ = content.navigate(url);
         }
     }
-}
-
-#[tauri::command]
-fn read_clipboard(app: tauri::AppHandle) -> Result<String, String> {
-    app.clipboard().read_text().map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn write_clipboard(app: tauri::AppHandle, text: String) -> Result<(), String> {
-    app.clipboard().write_text(text).map_err(|e| e.to_string())
 }
 
 /// Enables two-finger swipe-to-navigate (back/forward) in the content webview.
@@ -220,18 +209,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
         // Native menu so Edit > Cut/Copy/Paste work via clicks.
         .menu(|handle| tauri::menu::Menu::default(handle))
         .manage(ServerState::default())
-        .invoke_handler(tauri::generate_handler![
-            back,
-            forward,
-            reload,
-            navigate,
-            read_clipboard,
-            write_clipboard
-        ])
+        .invoke_handler(tauri::generate_handler![back, forward, reload, navigate])
         .setup(|app| {
             let handle = app.handle().clone();
 

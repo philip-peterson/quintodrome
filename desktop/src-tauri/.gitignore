@@ -2,4 +2,3 @@ binaries/*
 !binaries/.gitkeep
 target/
 gen/
-permissions/
