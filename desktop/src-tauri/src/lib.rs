@@ -11,35 +11,6 @@ use tauri_plugin_opener::OpenerExt;
 const TOOLBAR_HEIGHT: f64 = 60.0;
 const DEFAULT_PUBLIC_URL: &str = "http://quintodrome";
 
-/// Injected into the content webview to make Cmd+C/X/V/A/Z work. WKWebView
-/// doesn't reliably route these through the app menu's key equivalents, so we
-/// handle them at the DOM level (and read the clipboard natively for paste).
-const EDIT_SHORTCUTS_SCRIPT: &str = r#"
-(function () {
-  if (window.__quintodromeShortcuts) return;
-  window.__quintodromeShortcuts = true;
-  document.addEventListener('keydown', function (e) {
-    if (!e.metaKey || e.ctrlKey || e.altKey) return;
-    var k = (e.key || '').toLowerCase();
-    var cmd = null;
-    if (k === 'x') cmd = 'cut';
-    else if (k === 'c') cmd = 'copy';
-    else if (k === 'a') cmd = 'selectAll';
-    else if (k === 'z') cmd = e.shiftKey ? 'redo' : 'undo';
-    else if (k === 'v') {
-      e.preventDefault();
-      window.__TAURI_INTERNALS__.invoke('read_clipboard').then(function (text) {
-        if (text) document.execCommand('insertText', false, text);
-      }).catch(function () {});
-      return;
-    }
-    if (!cmd) return;
-    e.preventDefault();
-    try { document.execCommand(cmd); } catch (err) {}
-  }, true);
-})();
-"#;
-
 /// Maps the internal Navidrome origin (e.g. `http://127.0.0.1:4533`) to a
 /// friendlier, user-facing origin shown in the address bar.
 #[derive(Clone)]
@@ -56,14 +27,12 @@ impl UrlMask {
         Self { real, public }
     }
 
-    /// `http://127.0.0.1:4533/...` -> `http://quintodrome/...`
     fn mask(&self, url: &str) -> String {
         url.strip_prefix(&self.real)
             .map(|rest| format!("{}{}", self.public, rest))
             .unwrap_or_else(|| url.to_string())
     }
 
-    /// `http://quintodrome/...` -> `http://127.0.0.1:4533/...`
     fn unmask(&self, url: &str) -> String {
         url.strip_prefix(&self.public)
             .map(|rest| format!("{}{}", self.real, rest))
@@ -124,10 +93,6 @@ fn enable_swipe_navigation(app: &tauri::AppHandle) {
 }
 
 /// Keeps the address bar in sync with the content webview's real URL.
-///
-/// `on_navigation` only fires for actual document loads, so history traversal
-/// (back/forward) and SPA `pushState` navigation would otherwise leave the
-/// address bar stale. Polling `Webview::url()` covers all of those.
 fn start_url_poller(app: &tauri::AppHandle, mask: UrlMask) {
     let handle = app.clone();
     std::thread::spawn(move || {
@@ -181,14 +146,82 @@ fn layout(app: &tauri::AppHandle) {
     }
 }
 
+/// Installs a local NSEvent monitor that intercepts Cmd+X/C/V/A/Z and
+/// dispatches the matching native editing selector to the first responder.
+///
+/// Menu key equivalents don't reach the webviews (content or devtools) in
+/// Tauri on macOS, so we intercept the key events at the app level instead —
+/// this is the only reliable way to make cut/copy/paste work in the devtools
+/// console.
+#[cfg(target_os = "macos")]
+fn install_edit_shortcut_monitor() {
+    use objc2::runtime::{AnyObject, Sel};
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::{NSApplication, NSEvent, NSEventMask, NSEventModifierFlags};
+    use std::ptr::NonNull;
+
+    let Some(mtm) = MainThreadMarker::new() else {
+        return;
+    };
+    let app = NSApplication::sharedApplication(mtm);
+
+    let block = block2::RcBlock::new(move |event: NonNull<NSEvent>| -> *mut NSEvent {
+        let event = unsafe { event.as_ref() };
+        let flags = event.modifierFlags();
+        if !flags.contains(NSEventModifierFlags::Command) {
+            return event as *const NSEvent as *mut NSEvent;
+        }
+
+        let key = event
+            .charactersIgnoringModifiers()
+            .map(|s| s.to_string().to_lowercase())
+            .unwrap_or_default();
+
+        let selector: Option<&'static std::ffi::CStr> = match key.as_str() {
+            "x" => Some(c"cut:"),
+            "c" => Some(c"copy:"),
+            "v" => Some(c"paste:"),
+            "a" => Some(c"selectAll:"),
+            "z" => {
+                if flags.contains(NSEventModifierFlags::Shift) {
+                    Some(c"redo:")
+                } else {
+                    Some(c"undo:")
+                }
+            }
+            _ => None,
+        };
+
+        let Some(selector) = selector else {
+            return event as *const NSEvent as *mut NSEvent;
+        };
+
+        unsafe {
+            let _: bool = app.sendAction_to_from(
+                Sel::register(selector),
+                None::<&AnyObject>,
+                None::<&AnyObject>,
+            );
+        }
+        std::ptr::null_mut()
+    });
+
+    unsafe {
+        let monitor =
+            NSEvent::addLocalMonitorForEventsMatchingMask_handler(NSEventMask::KeyDown, &block);
+        if let Some(monitor) = monitor {
+            std::mem::forget(monitor);
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        // The default menu wires up the Edit items (undo/cut/copy/paste/select
-        // all), so Cmd+X/C/V/A/Z work in the webview's text fields.
+        // Native menu so Edit > Cut/Copy/Paste work via clicks.
         .menu(|handle| tauri::menu::Menu::default(handle))
         .manage(ServerState::default())
         .invoke_handler(tauri::generate_handler![
@@ -218,7 +251,6 @@ pub fn run() {
             // The primary webview ("main") is the toolbar; the Navidrome content
             // lives in a child webview below it.
             let content = WebviewBuilder::new("content", WebviewUrl::App("index.html".into()))
-                .initialization_script(EDIT_SHORTCUTS_SCRIPT)
                 .on_new_window({
                     let handle = handle.clone();
                     move |url, _features| {
@@ -249,6 +281,9 @@ pub fn run() {
 
             #[cfg(target_os = "macos")]
             enable_swipe_navigation(app.handle());
+
+            #[cfg(target_os = "macos")]
+            install_edit_shortcut_monitor();
 
             if let Some(toolbar) = app.get_webview("main") {
                 let _ = toolbar.emit("url-changed", mask.mask(&navidrome_url));

@@ -3,7 +3,17 @@
   "identifier": "default",
   "description": "Default capability for the Quintodrome desktop window",
   "windows": ["main"],
-  "permissions": ["core:default", "core:event:default", "shell:allow-open"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "shell:allow-open",
+    "allow-back",
+    "allow-forward",
+    "allow-reload",
+    "allow-navigate",
+    "allow-read-clipboard",
+    "allow-write-clipboard"
+  ],
   "remote": {
     "urls": ["http://127.0.0.1:4533", "http://localhost:4533"]
   }
