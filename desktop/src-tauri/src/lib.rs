@@ -143,7 +143,7 @@ fn layout(app: &tauri::AppHandle) {
 /// this is the only reliable way to make cut/copy/paste work in the devtools
 /// console.
 #[cfg(target_os = "macos")]
-fn install_edit_shortcut_monitor() {
+fn install_edit_shortcut_monitor(handle: &tauri::AppHandle) {
     use objc2::runtime::{AnyObject, Sel};
     use objc2::MainThreadMarker;
     use objc2_app_kit::{NSApplication, NSEvent, NSEventMask, NSEventModifierFlags};
@@ -153,6 +153,7 @@ fn install_edit_shortcut_monitor() {
         return;
     };
     let app = NSApplication::sharedApplication(mtm);
+    let handle = handle.clone();
 
     let block = block2::RcBlock::new(move |event: NonNull<NSEvent>| -> *mut NSEvent {
         let event = unsafe { event.as_ref() };
@@ -192,6 +193,21 @@ fn install_edit_shortcut_monitor() {
                 None::<&AnyObject>,
             );
         }
+
+        // selectAll:/undo:/redo: don't always dispatch through the responder
+        // chain in WKWebView, so drive the content webview via execCommand too.
+        let js = match key.as_str() {
+            "a" => Some("document.execCommand('selectAll')"),
+            "z" if flags.contains(NSEventModifierFlags::Shift) => Some("document.execCommand('redo')"),
+            "z" => Some("document.execCommand('undo')"),
+            _ => None,
+        };
+        if let Some(js) = js {
+            if let Some(content) = handle.get_webview("content") {
+                let _ = content.eval(js);
+            }
+        }
+
         std::ptr::null_mut()
     });
 
@@ -264,7 +280,7 @@ pub fn run() {
             enable_swipe_navigation(app.handle());
 
             #[cfg(target_os = "macos")]
-            install_edit_shortcut_monitor();
+            install_edit_shortcut_monitor(app.handle());
 
             if let Some(toolbar) = app.get_webview("main") {
                 let _ = toolbar.emit("url-changed", mask.mask(&navidrome_url));
