@@ -5,10 +5,40 @@ use tauri::{
     Emitter, LogicalPosition, LogicalSize, Manager, RunEvent, Url, WebviewBuilder, WebviewUrl,
     WindowEvent,
 };
+use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
 
 const TOOLBAR_HEIGHT: f64 = 60.0;
 const DEFAULT_PUBLIC_URL: &str = "http://quintodrome";
+
+/// Injected into the content webview to make Cmd+C/X/V/A/Z work. WKWebView
+/// doesn't reliably route these through the app menu's key equivalents, so we
+/// handle them at the DOM level (and read the clipboard natively for paste).
+const EDIT_SHORTCUTS_SCRIPT: &str = r#"
+(function () {
+  if (window.__quintodromeShortcuts) return;
+  window.__quintodromeShortcuts = true;
+  document.addEventListener('keydown', function (e) {
+    if (!e.metaKey || e.ctrlKey || e.altKey) return;
+    var k = (e.key || '').toLowerCase();
+    var cmd = null;
+    if (k === 'x') cmd = 'cut';
+    else if (k === 'c') cmd = 'copy';
+    else if (k === 'a') cmd = 'selectAll';
+    else if (k === 'z') cmd = e.shiftKey ? 'redo' : 'undo';
+    else if (k === 'v') {
+      e.preventDefault();
+      window.__TAURI_INTERNALS__.invoke('read_clipboard').then(function (text) {
+        if (text) document.execCommand('insertText', false, text);
+      }).catch(function () {});
+      return;
+    }
+    if (!cmd) return;
+    e.preventDefault();
+    try { document.execCommand(cmd); } catch (err) {}
+  }, true);
+})();
+"#;
 
 /// Maps the internal Navidrome origin (e.g. `http://127.0.0.1:4533`) to a
 /// friendlier, user-facing origin shown in the address bar.
@@ -70,6 +100,11 @@ fn navigate(app: tauri::AppHandle, url: String) {
             let _ = content.navigate(url);
         }
     }
+}
+
+#[tauri::command]
+fn read_clipboard(app: tauri::AppHandle) -> Result<String, String> {
+    app.clipboard().read_text().map_err(|e| e.to_string())
 }
 
 /// Enables two-finger swipe-to-navigate (back/forward) in the content webview.
@@ -146,11 +181,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         // The default menu wires up the Edit items (undo/cut/copy/paste/select
         // all), so Cmd+X/C/V/A/Z work in the webview's text fields.
         .menu(|handle| tauri::menu::Menu::default(handle))
         .manage(ServerState::default())
-        .invoke_handler(tauri::generate_handler![back, forward, reload, navigate])
+        .invoke_handler(tauri::generate_handler![back, forward, reload, navigate, read_clipboard])
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -170,6 +206,7 @@ pub fn run() {
             // The primary webview ("main") is the toolbar; the Navidrome content
             // lives in a child webview below it.
             let content = WebviewBuilder::new("content", WebviewUrl::App("index.html".into()))
+                .initialization_script(EDIT_SHORTCUTS_SCRIPT)
                 .on_new_window({
                     let handle = handle.clone();
                     move |url, _features| {
