@@ -23,8 +23,8 @@ func mix(a, b rgb, t float64) rgb {
 }
 
 var (
-	bgTop    = rgb{58, 42, 94}
-	bgBottom = rgb{23, 21, 28}
+	bgTop        = rgb{58, 42, 94}
+	bgBottom     = rgb{23, 21, 28}
 	circleTop    = rgb{168, 85, 247}
 	circleBottom = rgb{124, 58, 237}
 	white        = rgb{255, 255, 255}
@@ -56,7 +56,7 @@ func sample(x, y float64) rgb {
 	}
 
 	// play triangle
-	tx := float64(size)*0.512
+	tx := float64(size) * 0.512
 	ax, ay := tx-float64(size)*0.145, float64(size)*0.342
 	bx, by := tx-float64(size)*0.145, float64(size)*0.658
 	cxv, cyv := tx+float64(size)*0.165, float64(size)*0.5
