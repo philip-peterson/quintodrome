@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Default capability for the Quintodrome desktop window",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "core:event:default"]
 }

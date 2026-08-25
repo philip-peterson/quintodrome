@@ -10,7 +10,8 @@ On launch the app:
 2. Otherwise it spawns the bundled `navidrome` binary as a **separate sidecar
    process**, pointed at the OS app-data/music directories, and waits for it to
    become ready.
-3. Loads the Navidrome UI in the webview.
+3. Loads the Navidrome UI in the content webview, below a thin toolbar with
+   back/forward/reload buttons and an address bar.
 4. On exit, sends `SIGTERM` to the spawned server so it shuts down gracefully
    (falls back to a hard kill after 3s).
 
@@ -44,9 +45,9 @@ To build a standalone `.app` instead:
 
 ```
 desktop/
-├── src/                 # Splash screen shown while Navidrome boots
+├── src/                 # toolbar.html (nav bar) + index.html (loading splash)
 ├── src-tauri/
-│   ├── src/             # Rust: sidecar spawn, health-check, lifecycle
+│   ├── src/             # Rust: sidecar spawn, health-check, lifecycle, toolbar
 │   ├── binaries/        # navidrome-<target-triple> sidecar (built, not committed)
 │   ├── icons/           # App icons
 │   ├── tauri.conf.json

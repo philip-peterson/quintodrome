@@ -27,12 +27,6 @@
       .container {
         max-width: 420px;
       }
-      h1 {
-        font-size: 1.6rem;
-        font-weight: 600;
-        letter-spacing: 0.02em;
-        margin-bottom: 24px;
-      }
       .spinner {
         width: 36px;
         height: 36px;
@@ -65,21 +59,9 @@
   </head>
   <body>
     <div class="container">
-      <h1>Quintodrome</h1>
       <div class="spinner" id="spinner"></div>
       <p id="status">Starting Navidrome…</p>
       <p id="error" hidden></p>
     </div>
-    <script>
-      const params = new URLSearchParams(location.search);
-      const error = params.get("error");
-      if (error) {
-        document.getElementById("spinner").hidden = true;
-        document.getElementById("status").hidden = true;
-        const el = document.getElementById("error");
-        el.hidden = false;
-        el.textContent = "Failed to start Navidrome: " + error;
-      }
-    </script>
   </body>
 </html>
