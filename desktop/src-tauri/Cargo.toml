@@ -21,6 +21,9 @@ thiserror = "1"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-web-kit = { version = "0.3", features = ["WKWebView"] }
+
 [features]
 # This feature is used for production builds or when `devPath` points to the
 # filesystem and the built-in dev server is disabled.

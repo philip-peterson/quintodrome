@@ -38,6 +38,17 @@ fn navigate(app: tauri::AppHandle, url: String) {
     }
 }
 
+/// Enables two-finger swipe-to-navigate (back/forward) in the content webview.
+#[cfg(target_os = "macos")]
+fn enable_swipe_navigation(app: &tauri::AppHandle) {
+    if let Some(content) = app.get_webview("content") {
+        let _ = content.with_webview(|webview| unsafe {
+            let view: &objc2_web_kit::WKWebView = &*webview.inner().cast();
+            view.setAllowsBackForwardNavigationGestures(true);
+        });
+    }
+}
+
 /// Positions the toolbar strip at the top and the content webview below it.
 fn layout(app: &tauri::AppHandle) {
     let Some(window) = app.get_window("main") else {
@@ -113,6 +124,9 @@ pub fn run() {
             }
 
             layout(app.handle());
+
+            #[cfg(target_os = "macos")]
+            enable_swipe_navigation(app.handle());
 
             if let Some(toolbar) = app.get_webview("main") {
                 let _ = toolbar.emit("url-changed", &navidrome_url);
