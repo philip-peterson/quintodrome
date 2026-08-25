@@ -39,6 +39,6 @@ if [[ "$SKIP_TAURI" == true ]]; then
 fi
 
 echo "==> Building Quintodrome Tauri app..."
-(cd "$DESKTOP" && npx tauri build)
+(cd "$DESKTOP" && npx --yes @tauri-apps/cli@2 build)
 
 echo "==> Done."
