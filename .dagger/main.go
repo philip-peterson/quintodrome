@@ -123,3 +123,26 @@ func goContainer() *dagger.Container {
 func jsContainer() *dagger.Container {
 	return dag.Container().From("node:24")
 }
+
+// BuildDesktopWindows builds the Windows desktop app (.exe/.msi) inside a
+// Windows container.
+//
+// Experimental: this requires the Dagger engine to run on a Windows host with
+// BuildKit's Windows container support enabled (the engine uses the containerd
+// worker with `platforms = ["windows/amd64"]`). Unverified end-to-end — the
+// Rust MSVC toolchain and Tauri's NSIS/WiX bundling may not behave in a
+// Windows Server Core container the way they do on a full Windows runner.
+func (m *Quintodrome) BuildDesktopWindows(ctx context.Context, src *dagger.Directory) *dagger.Directory {
+	setup := `Set-ExecutionPolicy Bypass -Scope Process -Force
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072
+iex ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+choco install -y nodejs-lts golang rustup.install visualstudio2022buildtools visualstudio2022-workload-vctools --no-progress`
+
+	return dag.Container().
+		From("mcr.microsoft.com/windows/servercore:ltsc2022").
+		WithDirectory("C:/src", src).
+		WithWorkdir("C:/src").
+		WithExec([]string{"powershell", "-NoProfile", "-Command", setup}).
+		WithExec([]string{"cmd", "/c", "npm --version && go version && rustc --version"}).
+		Directory("C:/src/desktop/src-tauri/target/release/bundle")
+}
