@@ -146,6 +146,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
+        // The default menu wires up the Edit items (undo/cut/copy/paste/select
+        // all), so Cmd+X/C/V/A/Z work in the webview's text fields.
+        .menu(|handle| tauri::menu::Menu::default(handle))
         .manage(ServerState::default())
         .invoke_handler(tauri::generate_handler![back, forward, reload, navigate])
         .setup(|app| {
