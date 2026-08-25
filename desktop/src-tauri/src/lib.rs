@@ -82,6 +82,38 @@ fn enable_swipe_navigation(app: &tauri::AppHandle) {
     }
 }
 
+/// Keeps the address bar in sync with the content webview's real URL.
+///
+/// `on_navigation` only fires for actual document loads, so history traversal
+/// (back/forward) and SPA `pushState` navigation would otherwise leave the
+/// address bar stale. Polling `Webview::url()` covers all of those.
+fn start_url_poller(app: &tauri::AppHandle, mask: UrlMask) {
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        let mut last: Option<String> = None;
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(400));
+            let Some(content) = handle.get_webview("content") else {
+                continue;
+            };
+            let Ok(url) = content.url() else { continue };
+            if url.scheme() != "http" && url.scheme() != "https" {
+                continue;
+            }
+            if url.host_str() == Some("tauri.localhost") {
+                continue;
+            }
+            let masked = mask.mask(url.as_str());
+            if last.as_deref() != Some(masked.as_str()) {
+                if let Some(toolbar) = handle.get_webview("main") {
+                    let _ = toolbar.emit("url-changed", masked.clone());
+                }
+                last = Some(masked);
+            }
+        }
+    });
+}
+
 /// Positions the toolbar strip at the top and the content webview below it.
 fn layout(app: &tauri::AppHandle) {
     let Some(window) = app.get_window("main") else {
@@ -132,19 +164,7 @@ pub fn run() {
 
             // The primary webview ("main") is the toolbar; the Navidrome content
             // lives in a child webview below it.
-            let content = WebviewBuilder::new("content", WebviewUrl::App("index.html".into()))
-                .on_navigation({
-                    let handle = handle.clone();
-                    let mask = mask.clone();
-                    move |url| {
-                        if url.scheme() == "http" || url.scheme() == "https" {
-                            if let Some(toolbar) = handle.get_webview("main") {
-                                let _ = toolbar.emit("url-changed", mask.mask(&url.to_string()));
-                            }
-                        }
-                        true
-                    }
-                });
+            let content = WebviewBuilder::new("content", WebviewUrl::App("index.html".into()));
 
             if let Some(window) = app.get_window("main") {
                 let _ = window.add_child(
@@ -169,6 +189,8 @@ pub fn run() {
                 let _ = toolbar.emit("url-changed", mask.mask(&navidrome_url));
             }
 
+            start_url_poller(app.handle(), mask);
+
             // Detect/start Navidrome off the main thread, then load it.
             let content_url = navidrome_url.clone();
             std::thread::spawn(move || {
@@ -187,10 +209,14 @@ pub fn run() {
                     return;
                 }
 
-                if let Ok(url) = Url::parse(&content_url) {
-                    if let Some(content) = handle.get_webview("content") {
-                        let _ = content.navigate(url);
-                    }
+                // Replace (not push) so the splash page isn't left in history —
+                // otherwise "back" would return to the loading screen.
+                if let Some(content) = handle.get_webview("content") {
+                    let js = format!(
+                        "location.replace({})",
+                        serde_json::to_string(&content_url).unwrap()
+                    );
+                    let _ = content.eval(&js);
                 }
             });
 
