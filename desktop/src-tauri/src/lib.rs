@@ -6,7 +6,7 @@ use tauri::{
     WindowEvent,
 };
 
-const TOOLBAR_HEIGHT: f64 = 44.0;
+const TOOLBAR_HEIGHT: f64 = 60.0;
 
 #[tauri::command]
 fn back(app: tauri::AppHandle) {
