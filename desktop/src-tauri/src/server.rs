@@ -117,6 +117,8 @@ fn spawn(handle: &AppHandle, navidrome: &Navidrome) -> Result<(), ServerError> {
             "ND_DEVAUTOCREATEADMINPASSWORD",
             admin_password.as_str(),
         )
+        .env("ND_ENABLEINSIGHTSCOLLECTOR", "false")
+        .env("ND_DEVAUTOLOGINUSERNAME", "admin")
         .args(args)
         .spawn()?;
 
