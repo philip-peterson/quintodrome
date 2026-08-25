@@ -120,7 +120,10 @@ func (m *Quintodrome) TestJS(ctx context.Context, src *dagger.Directory) error {
 }
 
 func goContainer() *dagger.Container {
-	return dag.Container().From("golang:1.26")
+	return dag.Container().
+		From("golang:1.26").
+		WithExec([]string{"apt-get", "update"}).
+		WithExec([]string{"apt-get", "install", "-y", "zip"})
 }
 
 func jsContainer() *dagger.Container {
