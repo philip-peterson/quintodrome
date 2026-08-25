@@ -135,44 +135,6 @@ fn layout(app: &tauri::AppHandle) {
     }
 }
 
-/// Evaluates `js` on every WKWebView in the key window's view hierarchy. This
-/// reaches the Web Inspector (devtools) webview too — which is not a
-/// Tauri-managed webview — so select-all/undo/redo work in the console.
-#[cfg(target_os = "macos")]
-fn eval_js_on_focused_webviews(js: &str) {
-    use objc2::MainThreadMarker;
-    use objc2_app_kit::NSApplication;
-    use objc2_foundation::NSString;
-
-    let Some(mtm) = MainThreadMarker::new() else {
-        return;
-    };
-    let app = NSApplication::sharedApplication(mtm);
-    let Some(window) = app.keyWindow() else {
-        return;
-    };
-    let Some(content) = window.contentView() else {
-        return;
-    };
-
-    let js = NSString::from_str(js);
-    walk_and_eval(&content, &js);
-}
-
-#[cfg(target_os = "macos")]
-fn walk_and_eval(view: &objc2_app_kit::NSView, js: &objc2_foundation::NSString) {
-    use objc2_web_kit::WKWebView;
-
-    if let Some(webview) = view.downcast_ref::<WKWebView>() {
-        unsafe {
-            webview.evaluateJavaScript_completionHandler(js, None);
-        }
-    }
-    for subview in view.subviews().iter() {
-        walk_and_eval(&subview, js);
-    }
-}
-
 /// Installs a local NSEvent monitor that intercepts Cmd+X/C/V/A/Z and
 /// dispatches the matching native editing selector to the first responder.
 ///
@@ -181,7 +143,7 @@ fn walk_and_eval(view: &objc2_app_kit::NSView, js: &objc2_foundation::NSString) 
 /// this is the only reliable way to make cut/copy/paste work in the devtools
 /// console.
 #[cfg(target_os = "macos")]
-fn install_edit_shortcut_monitor() {
+fn install_edit_shortcut_monitor(handle: &tauri::AppHandle) {
     use objc2::runtime::{AnyObject, Sel};
     use objc2::MainThreadMarker;
     use objc2_app_kit::{NSApplication, NSEvent, NSEventMask, NSEventModifierFlags};
@@ -191,6 +153,7 @@ fn install_edit_shortcut_monitor() {
         return;
     };
     let app = NSApplication::sharedApplication(mtm);
+    let handle = handle.clone();
 
     let block = block2::RcBlock::new(move |event: NonNull<NSEvent>| -> *mut NSEvent {
         let event = unsafe { event.as_ref() };
@@ -232,7 +195,7 @@ fn install_edit_shortcut_monitor() {
         }
 
         // selectAll:/undo:/redo: don't dispatch through the responder chain in
-        // WKWebView, so drive the focused webview(s) via execCommand too — but
+        // WKWebView, so drive the content webview via execCommand too — but
         // only when an editable element is actually focused, otherwise we'd
         // select the whole document.
         let js = match key.as_str() {
@@ -246,7 +209,9 @@ fn install_edit_shortcut_monitor() {
             _ => None,
         };
         if let Some(js) = js {
-            eval_js_on_focused_webviews(js);
+            if let Some(content) = handle.get_webview("content") {
+                let _ = content.eval(js);
+            }
         }
 
         std::ptr::null_mut()
@@ -321,7 +286,7 @@ pub fn run() {
             enable_swipe_navigation(app.handle());
 
             #[cfg(target_os = "macos")]
-            install_edit_shortcut_monitor();
+            install_edit_shortcut_monitor(app.handle());
 
             if let Some(toolbar) = app.get_webview("main") {
                 let _ = toolbar.emit("url-changed", mask.mask(&navidrome_url));

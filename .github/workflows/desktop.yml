@@ -71,7 +71,10 @@ jobs:
         shell: bash
         run: |
           cd ui
-          npm ci
+          # --ignore-scripts skips the workbox postinstall (bin/update-workbox.sh),
+          # a bash script that fails under cmd.exe on Windows. It's only needed
+          # for the PWA service worker, which the desktop app doesn't use.
+          npm ci --ignore-scripts
           npm run build
 
       - name: Build Navidrome server binary
