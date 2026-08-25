@@ -100,6 +100,7 @@ func (pd *Queue) Shuffle() {
 		backupID = current.ID
 	}
 
+	//nolint:gosec // playback shuffle order doesn't need cryptographic randomness
 	rand.Shuffle(len(pd.Items), func(i, j int) { pd.Items[i], pd.Items[j] = pd.Items[j], pd.Items[i] })
 
 	var err error
