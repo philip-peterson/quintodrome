@@ -16,9 +16,10 @@ On launch the app:
    (falls back to a hard kill after 3s).
 
 On a **fresh install** (no existing Navidrome data) the app also auto-creates
-the initial admin user (`admin` / `admin`) behind the scenes, so you skip
-Navidrome's "create an admin user" first-run screen. Change the password in
-Navidrome settings afterwards; override it via `QUINTODROME_ADMIN_PASSWORD`.
+the initial admin user (`admin` / `admin`) behind the scenes, and auto-logs-in
+as that user on startup — you skip both Navidrome's "create an admin user"
+first-run screen and the login page. Change the password in Navidrome settings
+afterwards; override it via `QUINTODROME_ADMIN_PASSWORD`.
 
 ## How to launch
 
