@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quintodrome</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #1b1b1f;
+        color: #e4e4e7;
+        font-family: system-ui, -apple-system, sans-serif;
+        text-align: center;
+        padding: 24px;
+      }
+      .container {
+        max-width: 420px;
+      }
+      h1 {
+        font-size: 1.6rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        margin-bottom: 24px;
+      }
+      .spinner {
+        width: 36px;
+        height: 36px;
+        margin: 0 auto 20px;
+        border: 3px solid rgba(255, 255, 255, 0.15);
+        border-top-color: #a855f7;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      #status {
+        color: #a1a1aa;
+        font-size: 0.95rem;
+      }
+      #error {
+        color: #f87171;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin-top: 12px;
+        word-break: break-word;
+      }
+      [hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Quintodrome</h1>
+      <div class="spinner" id="spinner"></div>
+      <p id="status">Starting Navidrome…</p>
+      <p id="error" hidden></p>
+    </div>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const error = params.get("error");
+      if (error) {
+        document.getElementById("spinner").hidden = true;
+        document.getElementById("status").hidden = true;
+        const el = document.getElementById("error");
+        el.hidden = false;
+        el.textContent = "Failed to start Navidrome: " + error;
+      }
+    </script>
+  </body>
+</html>

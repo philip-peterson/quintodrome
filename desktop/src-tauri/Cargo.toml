@@ -1,0 +1,27 @@
+[package]
+name = "quintodrome"
+version = "0.1.0"
+description = "Desktop wrapper that hosts Navidrome"
+authors = ["Quintodrome"]
+edition = "2021"
+
+[lib]
+name = "quintodrome_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde_json = "1"
+thiserror = "1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[features]
+# This feature is used for production builds or when `devPath` points to the
+# filesystem and the built-in dev server is disabled.
+custom-protocol = ["tauri/custom-protocol"]
