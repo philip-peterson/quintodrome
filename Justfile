@@ -13,3 +13,18 @@ bundle:
 # Build only the Navidrome sidecar binary.
 sidecar:
     ./desktop/scripts/build.sh --skip-tauri
+
+# Remove Navidrome's persistent state (database, cache, backups) for a clean
+# first-run. Your music files are NOT touched. Quit the app first.
+clean-state:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "$(uname -s)" in
+      Darwin) dir="$HOME/Library/Application Support/com.quintodrome.desktop" ;;
+      Linux)  dir="${XDG_DATA_HOME:-$HOME/.local/share}/com.quintodrome.desktop" ;;
+      MINGW*|MSYS*|CYGWIN*) dir="${APPDATA:-$HOME/AppData/Roaming}/com.quintodrome.desktop" ;;
+      *) echo "unsupported OS" >&2; exit 1 ;;
+    esac
+    echo "Removing: $dir"
+    rm -rf "$dir"
+    echo "Done. Next launch starts fresh (first-run setup)."

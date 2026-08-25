@@ -104,9 +104,19 @@ fn spawn(handle: &AppHandle, navidrome: &Navidrome) -> Result<(), ServerError> {
         music_folder,
     ];
 
+    // Auto-provision the first admin user on a fresh install. Navidrome only
+    // honors this during initial setup (when no users/data exist), so an
+    // existing installation is left untouched.
+    let admin_password =
+        std::env::var("QUINTODROME_ADMIN_PASSWORD").unwrap_or_else(|_| "admin".to_string());
+
     let (mut rx, child) = handle
         .shell()
         .sidecar("navidrome")?
+        .env(
+            "ND_DEVAUTOCREATEADMINPASSWORD",
+            admin_password.as_str(),
+        )
         .args(args)
         .spawn()?;
 

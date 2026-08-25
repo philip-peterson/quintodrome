@@ -15,6 +15,11 @@ On launch the app:
 4. On exit, sends `SIGTERM` to the spawned server so it shuts down gracefully
    (falls back to a hard kill after 3s).
 
+On a **fresh install** (no existing Navidrome data) the app also auto-creates
+the initial admin user (`admin` / `admin`) behind the scenes, so you skip
+Navidrome's "create an admin user" first-run screen. Change the password in
+Navidrome settings afterwards; override it via `QUINTODROME_ADMIN_PASSWORD`.
+
 ## How to launch
 
 From the repo root:
@@ -105,6 +110,7 @@ Environment variables override the defaults:
 | `QUINTODROME_HOST`          | `127.0.0.1`              | Address the webview connects to |
 | `QUINTODROME_PORT`          | `4533`                   | Port for the Navidrome server   |
 | `QUINTODROME_MUSIC_FOLDER`  | OS music dir (e.g. `~/Music`) | Where your music lives      |
+| `QUINTODROME_ADMIN_PASSWORD` | `admin`                 | Password for the auto-created admin user (fresh installs only) |
 | `QUINTODROME_PUBLIC_URL`    | `http://quintodrome`     | Friendly origin shown in the address bar |
 
 The data folder (DB, cache) is always the OS app-data directory
