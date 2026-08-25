@@ -42,7 +42,7 @@ func (m *Quintodrome) LintGo(ctx context.Context, src *dagger.Directory) error {
 	_, err := goContainer().
 		WithDirectory("/repo", src).
 		WithWorkdir("/repo").
-		WithExec([]string{"sh", "-c", "curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v2.12.0"}).
+		WithExec([]string{"sh", "-c", "curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin"}).
 		WithExec([]string{"golangci-lint", "run", "--timeout", "2m"}).
 		Sync(ctx)
 	return err
