@@ -5,6 +5,7 @@ use tauri::{
     Emitter, LogicalPosition, LogicalSize, Manager, RunEvent, Url, WebviewBuilder, WebviewUrl,
     WindowEvent,
 };
+use tauri_plugin_opener::OpenerExt;
 
 const TOOLBAR_HEIGHT: f64 = 60.0;
 const DEFAULT_PUBLIC_URL: &str = "http://quintodrome";
@@ -144,6 +145,7 @@ fn layout(app: &tauri::AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(ServerState::default())
         .invoke_handler(tauri::generate_handler![back, forward, reload, navigate])
         .setup(|app| {
@@ -164,7 +166,18 @@ pub fn run() {
 
             // The primary webview ("main") is the toolbar; the Navidrome content
             // lives in a child webview below it.
-            let content = WebviewBuilder::new("content", WebviewUrl::App("index.html".into()));
+            let content = WebviewBuilder::new("content", WebviewUrl::App("index.html".into()))
+                .on_new_window({
+                    let handle = handle.clone();
+                    move |url, _features| {
+                        // Open external links (Last.fm, etc.) in the default
+                        // browser instead of a new in-app window.
+                        if url.scheme() == "http" || url.scheme() == "https" {
+                            let _ = handle.opener().open_url(url.to_string(), None::<&str>);
+                        }
+                        tauri::webview::NewWindowResponse::Deny
+                    }
+                });
 
             if let Some(window) = app.get_window("main") {
                 let _ = window.add_child(
