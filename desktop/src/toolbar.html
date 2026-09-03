@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quintodrome</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 10px;
+        background: #232329;
+        border-bottom: 1px solid #34343c;
+        font-family: system-ui, -apple-system, sans-serif;
+        -webkit-user-select: none;
+        user-select: none;
+        overflow: hidden;
+      }
+      button {
+        width: 42px;
+        height: 42px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: #d4d4d8;
+        font-size: 22px;
+        line-height: 1;
+        cursor: pointer;
+        flex: none;
+      }
+      button:hover {
+        background: #34343c;
+      }
+      button:active {
+        background: #3f3f46;
+      }
+      #url {
+        flex: 1;
+        height: 42px;
+        padding: 0 16px;
+        border: 1px solid #34343c;
+        border-radius: 21px;
+        background: #1b1b1f;
+        color: #e4e4e7;
+        font-size: 15px;
+        outline: none;
+        min-width: 0;
+      }
+      #url:focus {
+        border-color: #a855f7;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="back" title="Back">←</button>
+    <button id="forward" title="Forward">→</button>
+    <button id="reload" title="Reload">⟳</button>
+    <input id="url" type="text" spellcheck="false" placeholder="http://quintodrome" />
+
+    <script>
+      const { invoke } = window.__TAURI__.core;
+      const { listen } = window.__TAURI__.event;
+      const urlInput = document.getElementById("url");
+
+      document.getElementById("back").addEventListener("click", () => invoke("back"));
+      document.getElementById("forward").addEventListener("click", () => invoke("forward"));
+      document.getElementById("reload").addEventListener("click", () => invoke("reload"));
+
+      urlInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          invoke("navigate", { url: urlInput.value.trim() });
+          urlInput.blur();
+        }
+      });
+
+      listen("url-changed", (event) => {
+        urlInput.value = event.payload;
+      });
+    </script>
+  </body>
+</html>

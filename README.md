@@ -1,88 +1,125 @@
-<a href="https://www.navidrome.org"><img src="resources/logo-192x192.png" alt="Navidrome logo" title="navidrome" align="right" height="60px" /></a>
+<img src="desktop/src-tauri/icons/128x128@2x.png" alt="Quintodrome logo" align="right" height="96" />
 
-# Navidrome Music Server &nbsp;[![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=Tired%20of%20paying%20for%20music%20subscriptions%2C%20and%20not%20finding%20what%20you%20really%20like%3F%20Roll%20your%20own%20streaming%20service%21&url=https://navidrome.org&via=navidrome)
+# Quintodrome
 
-[![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?logo=github&label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/navidrome/navidrome/pipeline.yml?branch=master&logo=github&style=flat-square)](https://nightly.link/navidrome/navidrome/workflows/pipeline/master)
-[![Downloads](https://img.shields.io/github/downloads/navidrome/navidrome/total?logo=github&style=flat-square)](https://github.com/navidrome/navidrome/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?logo=docker&label=pulls&style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
-[![Dev Chat](https://img.shields.io/discord/671335427726114836?logo=discord&label=discord&style=flat-square)](https://discord.gg/xh7j7yF)
-[![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?logo=reddit&label=/r/navidrome&style=flat-square)](https://www.reddit.com/r/navidrome/)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md)
-[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Navidrome%20Guru-006BFF?style=flat-square)](https://gurubase.io/g/navidrome)
+A [Tauri](https://tauri.app) desktop app that wraps
+[Navidrome](https://www.navidrome.org) — your self-hosted music server — into a
+native macOS/Windows application.
 
-Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your
-music collection from any browser or mobile device. It's like your personal Spotify!
+The server is bundled as a sidecar binary and managed automatically, so there's
+nothing to install, configure, or keep running: launch the app and it starts
+(and later shuts down) its own Navidrome instance for you.
 
+> This repository is a fork of [Navidrome](https://github.com/navidrome/navidrome).
+> Everything outside `desktop/` is the upstream server + web UI; `desktop/` is
+> the Quintodrome wrapper around it.
 
-**Note**: The `master` branch may be in an unstable or even broken state during development. 
-Please use [releases](https://github.com/navidrome/navidrome/releases) instead of 
-the `master` branch in order to get a stable set of binaries.
+## What it does
 
-## [Check out our Live Demo!](https://www.navidrome.org/demo/)
+On launch the app:
 
-__Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
-please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or join the discussion in our 
-[Subreddit](https://www.reddit.com/r/navidrome/). If you want to contribute to the project in any other way 
-([ui/backend dev](https://www.navidrome.org/docs/developers/), 
-[translations](https://www.navidrome.org/docs/developers/translations/), 
-[themes](https://www.navidrome.org/docs/developers/creating-themes)), please join the chat in our 
-[Discord server](https://discord.gg/xh7j7yF). 
+1. Checks whether a Navidrome server is already listening on `127.0.0.1:4533`
+   (via its `/ping` health endpoint). If so, it reuses it as-is.
+2. Otherwise it spawns the bundled `navidrome` binary as a **separate sidecar
+   process**, pointed at the OS app-data/music directories, and waits for it to
+   become ready.
+3. Loads the Navidrome UI in the content webview, below a thin toolbar with
+   back/forward/reload buttons and an address bar.
+4. On exit, sends `SIGTERM` to the spawned server so it shuts down gracefully
+   (falls back to a hard kill after 3s).
 
-## Installation
+Batteries included:
 
-See instructions on the [project's website](https://www.navidrome.org/docs/installation/)
+- **Auto-provisioning** — on a fresh install the app creates the initial admin
+  user (`admin` / `admin`) and logs in as it automatically, skipping both the
+  "create an admin user" and login screens.
+- **Opted-out telemetry** — Navidrome's insights collector is disabled by
+  default.
+- **Masked address bar** — the internal `127.0.0.1:4533` origin is shown as
+  `http://quintodrome`.
+- **External links** (Last.fm, artist pages, …) open in your default browser.
+- **Native editing shortcuts** — Cmd+X/C/V/A/Z work in the web UI.
+- **Swipe navigation** — two-finger swipe back/forward on macOS.
 
-## Cloud Hosting
+## Quick start
 
-[PikaPods](https://www.pikapods.com) has partnered with us to offer you an 
-[officially supported, cloud-hosted solution](https://www.navidrome.org/docs/installation/managed/#pikapods). 
-A share of the revenue helps fund the development of Navidrome at no additional cost for you.
+```sh
+# one-time: Node >= 24 (see .nvmrc), Go >= 1.26, Rust
+just run
+```
 
-[![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
+`just run` builds the Navidrome sidecar and launches the app. No `just`? See
+the [desktop README](desktop/README.md) for the plain commands, or install it
+with `brew install just`.
 
-## Features
- 
- - Handles very **large music collections**
- - Streams virtually **any audio format** available
- - Reads and uses all your beautifully curated **metadata**
- - Great support for **compilations** (Various Artists albums) and **box sets** (multi-disc albums)
- - **Multi-user**, each user has their own play counts, playlists, favourites, etc...
- - Very **low resource usage**
- - **Multi-platform**, runs on macOS, Linux and Windows. **Docker** images are also provided
- - Ready to use binaries for all major platforms, including **Raspberry Pi**
- - Automatically **monitors your library** for changes, importing new files and reloading new metadata 
- - **Themeable**, modern and responsive **Web interface** based on [Material UI](https://material-ui.com)
- - **Compatible** with all Subsonic/Madsonic/Airsonic [clients](https://www.navidrome.org/docs/overview/#apps)
- - **Transcoding** on the fly. Can be set per user/player. **Opus encoding is supported**
- - Translated to **various languages**
+To wipe Navidrome's persistent state (database, cache) and start fresh:
 
-## Translations
+```sh
+just clean-state
+```
 
-Navidrome uses [POEditor](https://poeditor.com/) for translations, and we are always looking 
-for [more contributors](https://www.navidrome.org/docs/developers/translations/)
+## Building a distributable
 
-<a href="https://poeditor.com/"> 
-<img height="32" src="https://github.com/user-attachments/assets/c19b1d2b-01e1-4682-a007-12356c42147c">
-</a>
+```sh
+just bundle          # or: ./desktop/scripts/build.sh
+```
 
-## Documentation
-All documentation can be found in the project's website: https://www.navidrome.org/docs. 
-Here are some useful direct links:
+This produces the platform's packaged app under
+`desktop/src-tauri/target/release/bundle/` (e.g. `macos/Quintodrome.app` on
+macOS). Cross-platform binaries are built in CI — see
+[`.github/workflows/desktop.yml`](.github/workflows/desktop.yml), which produces
+`.app`/`.dmg` on macOS and `.exe`/`.msi` on Windows for tagged releases.
 
-- [Overview](https://www.navidrome.org/docs/overview/)
-- [Installation](https://www.navidrome.org/docs/installation/)
-  - [Docker](https://www.navidrome.org/docs/installation/docker/)
-  - [Binaries](https://www.navidrome.org/docs/installation/pre-built-binaries/)
-  - [Build from source](https://www.navidrome.org/docs/installation/build-from-source/)
-- [Development](https://www.navidrome.org/docs/developers/)
-- [Subsonic API Compatibility](https://www.navidrome.org/docs/developers/subsonic-api/)
+> Artifacts are unsigned (no Apple/Windows code-signing certs), so users will
+> see Gatekeeper/SmartScreen prompts.
 
-## Screenshots
+## Configuration
 
-<p align="left">
-    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-login.png">
-    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-player.png">
-    <img height="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-mobile-album-view.png">
-    <img width="550" src="https://raw.githubusercontent.com/navidrome/navidrome/master/.github/screenshots/ss-desktop-player.png">
-</p>
+Environment variables override the defaults:
+
+| Variable                    | Default                        | Purpose                                  |
+| --------------------------- | ------------------------------ | ---------------------------------------- |
+| `QUINTODROME_HOST`          | `127.0.0.1`                    | Address the webview connects to          |
+| `QUINTODROME_PORT`          | `4533`                         | Port for the Navidrome server            |
+| `QUINTODROME_MUSIC_FOLDER`  | OS music dir (e.g. `~/Music`)  | Where your music lives                   |
+| `QUINTODROME_ADMIN_PASSWORD`| `admin`                        | Password for the auto-created admin user (fresh installs only) |
+| `QUINTODROME_PUBLIC_URL`    | `http://quintodrome`           | Friendly origin shown in the address bar |
+
+The data folder (database, cache) is always the OS app-data directory
+(e.g. `~/Library/Application Support/com.quintodrome.desktop` on macOS).
+
+## Repository layout
+
+```
+.
+├── desktop/          # Quintodrome: the Tauri wrapper (Rust + toolbar HTML)
+│   ├── src-tauri/    #   sidecar spawn/health-check, lifecycle, menu, clipboard
+│   ├── src/          #   toolbar.html (nav bar) + index.html (splash)
+│   └── scripts/      #   build.sh, icon generator
+├── ui/               # Navidrome web UI (React)
+├── server/           # Navidrome HTTP server
+├── core/             # Navidrome core (scanning, transcoding, …)
+├── cmd/              # Navidrome entrypoint / CLI
+└── Justfile          # run / bundle / sidecar / clean-state
+```
+
+For the details of building and running the desktop app directly, see
+[`desktop/README.md`](desktop/README.md).
+
+## Development
+
+Prerequisites:
+
+- Rust (stable)
+- Node.js ≥ 24 (pinned in `.nvmrc`)
+- Go ≥ 1.26 (for building the Navidrome binary)
+
+The Navidrome server is built with `make build`; the wrapper stages it as
+`desktop/src-tauri/binaries/navidrome-<target-triple>` and bundles it as a Tauri
+sidecar. See [`desktop/scripts/build.sh`](desktop/scripts/build.sh).
+
+## Acknowledgements
+
+Quintodrome is built on [Navidrome](https://github.com/navidrome/navidrome),
+an open-source web-based music collection server and streamer. All credit for
+the music server and web UI goes to the Navidrome project.

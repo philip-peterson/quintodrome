@@ -9,7 +9,9 @@ mkdir -p "$(dirname "$output")"
 # Build the source folder name based on GOOS, GOARCH and GOARM.
 source="${GOOS}_${GOARCH}"
 if [ "$GOARCH" = "arm" ]; then
-    source="${source}_${GOARM}"
+    # GOARM is bare ("5", "6", "7"); the Docker build output uses a "v" prefix
+    # (e.g. linux_arm_v5), so add it back here to match.
+    source="${source}_v${GOARM}"
 fi
 
 # Copy the output to the desired location
